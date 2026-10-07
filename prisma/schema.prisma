@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+enum Role {
+  cutting_supervisor
+  cutting_verifier
+  sewing_supervisor
+}
+
+enum OrderStatus {
+  CUTTING_IN_PROGRESS
+  PENDING_VERIFICATION
+  VERIFIED
+  SEWING_IN_PROGRESS
+  REJECTED
+}
+
+enum ComponentStatus {
+  GREEN
+  YELLOW
+  RED
+  PENDING
+}
+
+enum VerificationDecision {
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  cuttingOrders     CuttingOrder[]     @relation("OrderCreator")
+  verificationLogs  VerificationLog[]  @relation("LogVerifier")
+
+  @@map("users")
+}
+
+model Recipe {
+  id             String   @id @default(cuid())
+  recipeCode     String   @unique
+  name           String
+  category       String
+  stdFabricYards Float
+  wastageCap     Float
+  createdAt      DateTime @default(now())
+
+  components     RecipeComponent[]
+  cuttingOrders  CuttingOrder[]
+
+  @@map("recipes")
+}
+
+model RecipeComponent {
+  id               String  @id @default(cuid())
+  recipeId         String
+  componentName    String
+  piecesPerGarment Int
+  imageUrl         String?
+
+  recipe             Recipe             @relation(fields: [recipeId], references: [id])
+  verificationItems  VerificationItem[]
+
+  @@map("recipe_components")
+}
+
+model CuttingOrder {
+  id             String      @id @default(cuid())
+  orderNo        String      @unique
+  recipeId       String
+  targetQty      Int
+  fabricRollId   String
+  actualFabricYds Float
+  status         OrderStatus @default(CUTTING_IN_PROGRESS)
+  createdBy      String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  recipe            Recipe             @relation(fields: [recipeId], references: [id])
+  creator           User               @relation("OrderCreator", fields: [createdBy], references: [id])
+  verificationItems VerificationItem[]
+  verificationLogs  VerificationLog[]
+
+  @@map("cutting_orders")
+}
+
+model VerificationItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  componentId String
+  expectedQty Int
+  actualQty   Int?
+  status      ComponentStatus @default(PENDING)
+
+  order     CuttingOrder    @relation(fields: [orderId], references: [id])
+  component RecipeComponent @relation(fields: [componentId], references: [id])
+
+  @@unique([orderId, componentId])
+  @@map("verification_items")
+}
+
+model VerificationLog {
+  id            String               @id @default(cuid())
+  orderId       String
+  verifierId    String
+  decision      VerificationDecision
+  rejectionNote String?
+  wastagePct    Float?
+  createdAt     DateTime             @default(now())
+
+  order    CuttingOrder @relation(fields: [orderId], references: [id])
+  verifier User         @relation("LogVerifier", fields: [verifierId], references: [id])
+
+  @@map("verification_logs")
+}
