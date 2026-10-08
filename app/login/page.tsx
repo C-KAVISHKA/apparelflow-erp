@@ -109,6 +109,7 @@ export default function LoginPage() {
                     key={persona.roleName}
                     id={persona.roleId}
                     type="button"
+                    title={`Click to authenticate as ${persona.roleName} (${persona.email})`}
                     onClick={(e) => {
                       setActivePreset(persona.email);
                       setEmail(persona.email);
@@ -128,7 +129,12 @@ export default function LoginPage() {
                       </span>
                     </div>
                     <div className="text-xs font-bold text-slate-200">{persona.roleName}</div>
-                    <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{persona.email}</div>
+                    <div
+                      className="text-[10px] text-slate-300 font-mono mt-0.5 break-all leading-tight"
+                      title={persona.email}
+                    >
+                      {persona.email}
+                    </div>
                   </button>
                 );
               })}
