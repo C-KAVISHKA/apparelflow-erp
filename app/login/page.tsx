@@ -3,31 +3,41 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { Scissors, ShieldCheck, Layers, Factory, ArrowRight, AlertCircle, Lock, Mail, CheckCircle2 } from "lucide-react";
 
-const DEMO_CREDENTIALS = [
+const DEMO_PERSONAS = [
   {
-    role: "Cutting Supervisor",
+    roleId: "demo-cutting-supervisor",
+    roleName: "Cutting Supervisor",
     email: "supervisor@apparelflow.com",
     password: "Password123!",
-    color: "#3b82f6",
-    icon: "✂️",
-    desc: "Create orders, log fabric",
+    badge: "Operations",
+    description: "Create cutting batches, log fabric yardage & monitor lay progress",
+    icon: Scissors,
+    theme: "border-blue-500/30 hover:border-blue-500/60 bg-blue-950/20 text-blue-400",
+    badgeTheme: "bg-blue-900/40 text-blue-300 border-blue-700/50",
   },
   {
-    role: "Cutting Verifier",
+    roleId: "demo-cutting-verifier",
+    roleName: "Gatekeeper Verifier",
     email: "verifier@apparelflow.com",
     password: "Password123!",
-    color: "#22c55e",
-    icon: "🔍",
-    desc: "Count parts, approve/reject",
+    badge: "Quality Control",
+    description: "Component-by-component QC counting, approve/reject gatekeeper enforcement",
+    icon: ShieldCheck,
+    theme: "border-emerald-500/30 hover:border-emerald-500/60 bg-emerald-950/20 text-emerald-400",
+    badgeTheme: "bg-emerald-900/40 text-emerald-300 border-emerald-700/50",
   },
   {
-    role: "Sewing Supervisor",
+    roleId: "demo-sewing-supervisor",
+    roleName: "Sewing Floor Supervisor",
     email: "sewing@apparelflow.com",
     password: "Password123!",
-    color: "#a855f7",
-    icon: "🧵",
-    desc: "Start sewing assembly",
+    badge: "Assembly Floor",
+    description: "Receive verified cut bundles, inspect audit notes & initiate sewing lines",
+    icon: Layers,
+    theme: "border-purple-500/30 hover:border-purple-500/60 bg-purple-950/20 text-purple-400",
+    badgeTheme: "bg-purple-900/40 text-purple-300 border-purple-700/50",
   },
 ];
 
@@ -37,30 +47,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent, creds?: { email: string; password: string }) => {
+  const handleLogin = async (e: React.FormEvent, customCreds?: { email: string; password: string }) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const loginEmail = creds?.email || email;
-    const loginPassword = creds?.password || password;
+    const targetEmail = customCreds?.email || email;
+    const targetPassword = customCreds?.password || password;
 
-    if (!loginEmail || !loginPassword) {
-      setError("Please enter your email and password.");
+    if (!targetEmail || !targetPassword) {
+      setError("Please provide both email and password.");
       setLoading(false);
       return;
     }
 
     const res = await signIn("credentials", {
-      email: loginEmail,
-      password: loginPassword,
+      email: targetEmail,
+      password: targetPassword,
       redirect: false,
     });
 
     setLoading(false);
     if (res?.error) {
-      setError("Invalid email or password.");
+      setError("Authentication failed. Invalid email or password.");
     } else {
       router.push("/");
       router.refresh();
@@ -68,119 +79,135 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0a0f1e 0%, #0f1a2e 50%, #0a0f1e 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>
-      <div style={{ width: "100%", maxWidth: "480px" }}>
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div style={{ fontSize: "40px", marginBottom: "8px" }}>🏭</div>
-          <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#f1f5f9", margin: 0 }}>ApparelFlow ERP</h1>
-          <p style={{ color: "#64748b", marginTop: "6px", fontSize: "14px" }}>Cutting Operations & Gatekeeper Terminal</p>
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 mb-4 shadow-sm shadow-blue-500/10">
+          <Factory className="w-6 h-6" />
         </div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-100">ApparelFlow ERP</h1>
+        <p className="mt-1 text-sm text-slate-400">Cutting Operations & Gatekeeper Verification Terminal</p>
+      </div>
 
-        {/* Demo Credentials Panel */}
-        <div style={{ background: "#111827", border: "1px solid #1f2d45", borderRadius: "12px", padding: "20px", marginBottom: "24px" }}>
-          <p style={{ color: "#94a3b8", fontSize: "12px", fontWeight: "600", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px", margin: "0 0 12px 0" }}>
-            🎯 Demo Credentials — Click to Login
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {DEMO_CREDENTIALS.map((cred) => (
-              <button
-                key={cred.role}
-                id={`demo-${cred.role.toLowerCase().replace(/ /g, "-")}`}
-                onClick={(e) => {
-                  setEmail(cred.email);
-                  setPassword(cred.password);
-                  handleLogin(e, cred);
-                }}
-                style={{
-                  background: "#1a2235",
-                  border: `1px solid ${cred.color}33`,
-                  borderRadius: "8px",
-                  padding: "12px 16px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  transition: "all 0.2s",
-                  textAlign: "left",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#1f2d45")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#1a2235")}
-              >
-                <span style={{ fontSize: "20px" }}>{cred.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: cred.color, fontWeight: "600", fontSize: "14px" }}>{cred.role}</div>
-                  <div style={{ color: "#64748b", fontSize: "12px" }}>{cred.email}</div>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl px-4 sm:px-0">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-xl shadow-xl overflow-hidden backdrop-blur-sm">
+          {/* Quick Demo Switcher */}
+          <div className="p-6 border-b border-slate-800/80 bg-slate-950/40">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono">
+                Evaluation Demo Personas
+              </span>
+              <span className="text-[11px] text-slate-400">Click card to authenticate</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {DEMO_PERSONAS.map((persona) => {
+                const Icon = persona.icon;
+                const isSelected = activePreset === persona.email;
+                return (
+                  <button
+                    key={persona.roleName}
+                    id={persona.roleId}
+                    type="button"
+                    onClick={(e) => {
+                      setActivePreset(persona.email);
+                      setEmail(persona.email);
+                      setPassword(persona.password);
+                      handleLogin(e, { email: persona.email, password: persona.password });
+                    }}
+                    className={`flex flex-col text-left p-3.5 rounded-lg border transition-all duration-150 cursor-pointer relative group ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-950/40 ring-1 ring-blue-500/50"
+                        : `${persona.theme}`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Icon className="w-4 h-4" />
+                      <span className={`text-[10px] font-medium font-mono px-1.5 py-0.5 rounded border ${persona.badgeTheme}`}>
+                        {persona.badge}
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-200">{persona.roleName}</div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{persona.email}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Manual Login Section */}
+          <div className="p-6 sm:p-8">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="login-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@apparelflow.com"
+                    className="!pl-9 font-mono text-sm"
+                  />
                 </div>
-                <div style={{ color: "#475569", fontSize: "11px" }}>{cred.desc}</div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-1.5 font-mono">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="login-password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="!pl-9 text-sm"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-center gap-2 p-3 text-xs rounded-md bg-rose-950/40 border border-rose-500/40 text-rose-300">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button
+                id="login-submit"
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md shadow-sm transition-all duration-150 cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <span>Authenticating...</span>
+                ) : (
+                  <>
+                    <span>Sign In to Terminal</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
-            ))}
+            </form>
+          </div>
+
+          <div className="px-6 py-3 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Webtezza Manufacturing Systems</span>
+            <span className="font-mono">Security Tier 1 · RBAC Active</span>
           </div>
         </div>
-
-        {/* Manual Login Form */}
-        <div style={{ background: "#111827", border: "1px solid #1f2d45", borderRadius: "12px", padding: "24px" }}>
-          <h2 style={{ color: "#f1f5f9", fontSize: "18px", fontWeight: "700", margin: "0 0 20px 0" }}>Sign In</h2>
-          <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div>
-              <label style={{ display: "block", color: "#94a3b8", fontSize: "13px", marginBottom: "6px", fontWeight: "500" }}>
-                Email Address
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", color: "#94a3b8", fontSize: "13px", marginBottom: "6px", fontWeight: "500" }}>
-                Password
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-              />
-            </div>
-
-            {error && (
-              <div style={{ background: "#2d0a0a", border: "1px solid #ef4444", borderRadius: "8px", padding: "10px 14px", color: "#ef4444", fontSize: "14px" }}>
-                ⚠️ {error}
-              </div>
-            )}
-
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={loading}
-              style={{
-                background: loading ? "#1e3a8a" : "#3b82f6",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px",
-                fontSize: "15px",
-                fontWeight: "600",
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "background 0.2s",
-                marginTop: "4px",
-              }}
-            >
-              {loading ? "Signing in..." : "Sign In →"}
-            </button>
-          </form>
-        </div>
-
-        <p style={{ textAlign: "center", color: "#334155", fontSize: "12px", marginTop: "20px" }}>
-          Webtezza (Pvt) Ltd · ApparelFlow ERP v1.0
-        </p>
       </div>
     </div>
   );
