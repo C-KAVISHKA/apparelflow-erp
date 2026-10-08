@@ -1,36 +1,130 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ApparelFlow ERP — Cutting Operations & Gatekeeper Verification Terminal
 
-## Getting Started
+> **Live Demo:** [https://apparelflow-erp.vercel.app](https://apparelflow-erp.vercel.app)
+> **GitHub:** [https://github.com/C-KAVISHKA/apparelflow-erp](https://github.com/C-KAVISHKA/apparelflow-erp)
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Overview
+
+A production-grade full-stack web application implementing the **Cutting Operations & Gatekeeper Verification Terminal** for ApparelFlow ERP — Webtezza's manufacturing resource planning platform for commercial garment production facilities.
+
+---
+
+## Demo Credentials
+
+| Role | Email | Password | Access |
+|------|-------|----------|--------|
+| ✂️ Cutting Supervisor | `supervisor@apparelflow.com` | `Password123!` | Create orders, track progress |
+| 🔍 Cutting Verifier | `verifier@apparelflow.com` | `Password123!` | Verify components, approve/reject |
+| 🧵 Sewing Supervisor | `sewing@apparelflow.com` | `Password123!` | Sewing queue only |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Auth | NextAuth.js v5 (JWT) |
+| Database | PostgreSQL via Neon (serverless) |
+| ORM | Prisma |
+| Styling | Tailwind CSS + Custom CSS |
+| Testing | Vitest |
+| Deployment | Vercel |
+
+---
+
+## Architecture
+
+```
+apparelflow-erp/
+├── app/
+│   ├── api/
+│   │   ├── auth/[...nextauth]/   ← NextAuth handler
+│   │   ├── orders/               ← GET/POST cutting orders
+│   │   ├── recipes/              ← GET recipes + components
+│   │   ├── verify/
+│   │   │   ├── queue/            ← GET pending verification list
+│   │   │   └── [orderId]/
+│   │   │       ├── approve/      ← POST approve (hard stop)
+│   │   │       └── reject/       ← POST reject (requires reason)
+│   │   └── sewing/
+│   │       ├── queue/            ← GET VERIFIED-only orders
+│   │       └── [orderId]/start/  ← POST start sewing
+│   ├── dashboard/
+│   │   ├── supervisor/           ← Cutting Supervisor UI
+│   │   ├── verifier/             ← Verifier Terminal UI
+│   │   └── sewing/               ← Sewing Queue UI
+│   └── login/                    ← Login + Demo Panel
+├── prisma/
+│   ├── schema.prisma             ← Full relational schema
+│   └── seed.ts                   ← Recipe + user seeder
+├── middleware.ts                 ← Edge-level RBAC
+├── auth.ts                       ← NextAuth configuration
+├── tests/domain.test.ts          ← 5 automated tests
+└── AI_OPTIMIZATION_REPORT.md
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database Schema
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+users:               id, email, passwordHash, fullName, role, createdAt
+recipes:             id, recipeCode, name, category, stdFabricYards, wastageCap
+recipe_components:   id, recipeId, componentName, piecesPerGarment
+cutting_orders:      id, orderNo, recipeId, targetQty, fabricRollId, actualFabricYds, status, createdBy
+verification_items:  id, orderId, componentId, expectedQty, actualQty, status (GREEN/YELLOW/RED/PENDING)
+verification_logs:   id, orderId, verifierId, decision, rejectionNote, wastagePct, createdAt [IMMUTABLE]
+```
 
-## Learn More
+### Order State Machine
 
-To learn more about Next.js, take a look at the following resources:
+```
+CUTTING_IN_PROGRESS → PENDING_VERIFICATION → VERIFIED → SEWING_IN_PROGRESS
+                                           ↓
+                                       REJECTED
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Security Model
 
-## Deploy on Vercel
+| Layer | Mechanism |
+|-------|-----------|
+| Edge | middleware.ts blocks wrong-role routes before page renders |
+| Page | Server Components re-validate session before rendering |
+| API | Every route handler checks role + order state server-side |
+| Database | Sewing queue uses WHERE status = 'VERIFIED' — cannot be bypassed via URL |
+| Identity | Verifier ID always from session JWT — never from request body |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Running Locally
+
+```bash
+git clone https://github.com/C-KAVISHKA/apparelflow-erp.git
+cd apparelflow-erp
+npm install
+cp .env.example .env.local   # fill in your DATABASE_URL and NEXTAUTH_SECRET
+npm run db:push
+npm run db:seed
+npm run dev
+npm test
+```
+
+---
+
+## Seeded Recipes
+
+**Casual Blouse (REC-BL01)** — 1.8 yds/piece, 5% wastage cap
+- Front Body Panel, Back Body Panel, Left Sleeve, Right Sleeve, Collar & Stand, Sleeve Cuffs (×2)
+
+**Crop Top (REC-CT02)** — 1.1 yds/piece, 8% wastage cap
+- Front Chest Panel, Back Support Panel, Neck Binding Strip, Hem Elastic Casing, Side Strap Accents (×2)
+
+---
+
+*Built for Webtezza (Pvt) Ltd — Software Engineering Intern Assessment*
