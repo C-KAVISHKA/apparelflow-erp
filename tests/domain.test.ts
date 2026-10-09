@@ -178,31 +178,3 @@ describe("Core Domain Engine (`lib/domain.ts`)", () => {
   });
 });
 
-// ─── 2. SERVER-SIDE API ROUTE INTEGRATION TESTS ─────────────────────────────
-
-describe("Server-Side API Security & Tamper Protection Integration", () => {
-  it("Test 4: Non-verifier roles receive 403 Forbidden on verification approval", async () => {
-    // Test simulated server RBAC boundary
-    const supervisorSession = { user: { id: "user-1", role: "cutting_supervisor" } };
-    const verifierRole = "cutting_verifier";
-
-    const isAuthorized = supervisorSession.user.role === verifierRole;
-    expect(isAuthorized).toBe(false);
-  });
-
-  it("Test 5: Sewing queue query enforces WHERE status = 'VERIFIED' isolation", () => {
-    // Demonstrates query isolation contract: only orders with status === 'VERIFIED' are selected
-    const allOrders = [
-      { id: "1", orderNo: "ORD-001", status: "PENDING_VERIFICATION" },
-      { id: "2", orderNo: "ORD-002", status: "REJECTED" },
-      { id: "3", orderNo: "ORD-003", status: "VERIFIED" },
-      { id: "4", orderNo: "ORD-004", status: "CUTTING_IN_PROGRESS" },
-    ];
-
-    const sewingQueueResults = allOrders.filter((o) => o.status === "VERIFIED");
-
-    expect(sewingQueueResults.length).toBe(1);
-    expect(sewingQueueResults[0].orderNo).toBe("ORD-003");
-    expect(sewingQueueResults.every((o) => o.status === "VERIFIED")).toBe(true);
-  });
-});
