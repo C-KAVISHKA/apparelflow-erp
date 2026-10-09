@@ -1,6 +1,6 @@
 # ApparelFlow ERP — Cutting Operations & Gatekeeper Verification Terminal
 
-> **Live Demo:** [https://apparelflow-erp.vercel.app](https://apparelflow-erp.vercel.app)  
+> **Live Demo:** [https://apparelflow-erp-one.vercel.app](https://apparelflow-erp-one.vercel.app)  
 > **GitHub:** [https://github.com/C-KAVISHKA/apparelflow-erp](https://github.com/C-KAVISHKA/apparelflow-erp)  
 > **Target Role:** Software Engineering Intern (Full-Stack / React / Next.js)  
 > **Company:** Webtezza (Pvt) Ltd
