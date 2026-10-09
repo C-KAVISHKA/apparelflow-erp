@@ -166,6 +166,9 @@ AI-generated forms accepted negative numbers and decimals for component counts. 
 ### Query Isolation
 AI's initial sewing queue endpoint used a URL query parameter: `GET /api/sewing/queue?status=VERIFIED`. This would allow URL manipulation to leak other orders. I hardcoded `WHERE status = 'VERIFIED'` at the Prisma query level.
 
+### Enterprise Design System & UI Overhaul (Eliminating Generic AI UI Defaults)
+AI models by default produce generic inline styles (`style={{ ... }}`) with toy-like emoji overload on every heading and button. In industrial manufacturing MES/ERP software, real engineers build high-density, legible interfaces. I stripped all emojis, replaced inline styling with a cohesive design system using Tailwind tokens and Lucide SVGs, added monospaced tabular data for batch tracking, and implemented crisp traffic-light status indicators.
+
 ---
 
 ## 4. Defensive Architecture
