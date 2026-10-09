@@ -65,14 +65,15 @@ export default function DashboardNav({ role, name }: NavProps) {
             </div>
           </div>
 
-          {/* Sign Out Button */}
+          {/* Sign Out / Switch Role Button */}
           <button
             id="logout-btn"
+            title="Sign out and switch role"
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 hover:border-rose-800/50 border border-slate-800 rounded-lg transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Sign Out</span>
+            <span>Sign Out / Switch Role</span>
           </button>
         </div>
       </div>

@@ -72,7 +72,9 @@ apparelflow-erp/
 │   └── seed.ts                   ← Production recipes & test user seeder
 ├── middleware.ts                 ← Edge-level RBAC route protection
 ├── auth.ts                       ← NextAuth configuration & credentials provider
-├── tests/domain.test.ts          ← Automated test suite for domain rules + wastage
+├── tests/
+│   ├── domain.test.ts            ← Domain engine unit tests (14 tests: traffic-light, BOM, wastage)
+│   └── api.test.ts               ← Real Next.js route integration tests (8 tests: RBAC, hard-stop, audit)
 └── AI_OPTIMIZATION_REPORT.md     ← AI collaboration, defect log & defensive design
 ```
 
@@ -134,21 +136,29 @@ verification_logs:   id, orderId, verifierId, decision (APPROVED/REJECTED), reje
 
 ---
 
-## Automated Test Suite
+## Automated Test Suite (22/22 Passing)
 
-Run the automated test suite verifying all 5 required core domain rules:
+Run the automated test suite verifying all 5 required core domain rules and real API routes:
 
 ```bash
 npm test
 ```
 
-### Covered Test Specifications:
-- **Test 1**: All-GREEN component batch is successfully approved by an authenticated Verifier.
-- **Test 2**: Batch containing at least one RED (shortage) component strictly blocks approval and returns `422 Unprocessable Entity`.
-- **Test 3**: Rejection without an explanatory reason note is rejected by backend validation (`400 Bad Request`).
-- **Test 4**: Non-verifier roles receive `403 Forbidden` when attempting verification approval.
-- **Test 5**: Unapproved / unverified orders are excluded from the Sewing Queue query.
-- **Bonus Tests**: Fabric wastage percentage formulas and standard cap variance checks.
+### Test Suite Breakdown:
+
+#### 1. Domain Engine Unit Tests (`tests/domain.test.ts` — 14 tests)
+- **Component Evaluation**: Accurate `GREEN` (match), `YELLOW` (excess), and `RED` (shortage / invalid count) evaluation.
+- **BOM Gatekeeper Engine**: Multi-component evaluation setting `hasRed = true` for hard-stop blocking.
+- **Rejection Validation**: Enforces mandatory non-empty reason notes ($\ge 5$ characters).
+- **Wastage Calculations**: Fabric consumption variance formulas and standard cap variance checks.
+- **Defensive Guards**: Strict validation rejecting negative quantities, non-integers, and malformed inputs.
+
+#### 2. Server Route Integration Tests (`tests/api.test.ts` — 8 tests)
+- **Test 1**: All-GREEN batch approval by authenticated Verifier with audit logging bound to server JWT session ID.
+- **Test 2 & 2b**: Shortage or uncounted components return `422 Unprocessable Entity` and block DB writes.
+- **Test 3**: Rejection without explanatory note returns `400 Bad Request`.
+- **Test 4 & 4b**: Non-verifier roles receive `403 Forbidden` and unauthenticated requests receive `401 Unauthorized`.
+- **Test 5 & 5b**: Sewing Queue query is hard-filtered to `where: { status: "VERIFIED" }` and isolated from unauthorized roles.
 
 ---
 

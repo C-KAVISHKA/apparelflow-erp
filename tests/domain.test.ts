@@ -1,12 +1,17 @@
 /**
- * ApparelFlow ERP — Comprehensive Domain & Integration Test Suite
- * Tests all 5 core domain rules specified in the assessment specification.
+ * ApparelFlow ERP — Domain Engine Test Suite
+ * Tests core business rules specified in the assessment specification:
+ * - Traffic-light component evaluation matrix (GREEN, YELLOW, RED)
+ * - Multi-component BOM hard-stop gatekeeper evaluation
+ * - Mandatory rejection note validation (>= 5 chars)
+ * - Fabric consumption & wastage percentage formulas
+ * - Defensive input guards
  *
- * Directly tests shared domain engines in `lib/domain.ts` and Next.js API route handlers.
+ * Route integration tests are in `tests/api.test.ts`.
  * Run with: npm test
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   evaluateComponentCount,
   evaluateAllComponents,
