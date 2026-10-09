@@ -1,13 +1,14 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { validateCuttingOrderInput } from "@/lib/domain";
 
 // GET /api/orders - Get all cutting orders for the supervisor
 export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "cutting_supervisor") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Only cutting supervisors can view all orders" }, { status: 403 });
   }
 
   const orders = await prisma.cuttingOrder.findMany({
@@ -27,26 +28,29 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "cutting_supervisor") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: Only cutting supervisors can create orders" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { recipeId, targetQty, fabricRollId, actualFabricYds } = body;
-
-  // Input validation
-  if (!recipeId || !targetQty || !fabricRollId || !actualFabricYds) {
-    return NextResponse.json({ error: "All fields are required" }, { status: 400 });
-  }
-  if (targetQty <= 0 || actualFabricYds <= 0) {
-    return NextResponse.json({ error: "Quantities must be positive numbers" }, { status: 400 });
-  }
-  if (!Number.isInteger(targetQty)) {
-    return NextResponse.json({ error: "Target quantity must be a whole number" }, { status: 400 });
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
-  // Generate order number
-  const orderCount = await prisma.cuttingOrder.count();
-  const orderNo = `ORD-${String(orderCount + 1).padStart(4, "0")}`;
+  const validation = validateCuttingOrderInput({
+    recipeId: body.recipeId,
+    targetQty: body.targetQty,
+    fabricRollId: body.fabricRollId,
+    actualFabricYds: body.actualFabricYds,
+  });
+
+  if (!validation.valid || !validation.data) {
+    const firstError = Object.values(validation.errors)[0] || "Invalid input";
+    return NextResponse.json({ error: firstError, errors: validation.errors }, { status: 400 });
+  }
+
+  const { recipeId, targetQty, fabricRollId, actualFabricYds } = validation.data;
 
   // Get recipe components to create verification items
   const recipe = await prisma.recipe.findUnique({
@@ -54,9 +58,14 @@ export async function POST(req: Request) {
     include: { components: true },
   });
 
-  if (!recipe) return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+  if (!recipe) return NextResponse.json({ error: "Production recipe not found" }, { status: 404 });
 
-  // Create order with verification items (multiplier engine)
+  // Generate unique order number with collision protection
+  const timestampSuffix = Date.now().toString().slice(-4);
+  const orderCount = await prisma.cuttingOrder.count();
+  const orderNo = `ORD-${new Date().getFullYear()}-${String(orderCount + 1).padStart(3, "0")}-${timestampSuffix}`;
+
+  // Create order with verification items (multiplier engine) in atomic transaction
   const order = await prisma.cuttingOrder.create({
     data: {
       orderNo,
