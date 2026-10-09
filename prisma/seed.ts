@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // ─── Seed Users ───────────────────────────────────────────────────────────
+  // ─── 1. Seed Users ──────────────────────────────────────────────────────────
   const password = await bcrypt.hash("Password123!", 10);
 
   const supervisor = await prisma.user.upsert({
@@ -44,7 +44,7 @@ async function main() {
 
   console.log("✅ Users seeded:", supervisor.email, verifier.email, sewingSupervisor.email);
 
-  // ─── Seed Recipe A: Casual Blouse ─────────────────────────────────────────
+  // ─── 2. Seed Recipe A: Casual Blouse ────────────────────────────────────────
   const blouse = await prisma.recipe.upsert({
     where: { recipeCode: "REC-BL01" },
     update: {},
@@ -65,9 +65,10 @@ async function main() {
         ],
       },
     },
+    include: { components: true },
   });
 
-  // ─── Seed Recipe B: Crop Top ──────────────────────────────────────────────
+  // ─── 3. Seed Recipe B: Crop Top ─────────────────────────────────────────────
   const cropTop = await prisma.recipe.upsert({
     where: { recipeCode: "REC-CT02" },
     update: {},
@@ -87,10 +88,101 @@ async function main() {
         ],
       },
     },
+    include: { components: true },
   });
 
   console.log("✅ Recipes seeded:", blouse.name, cropTop.name);
-  console.log("🎉 Seeding complete!");
+
+  // ─── 4. Seed Representative Production Batches for Evaluator Demo ───────────
+
+  // Batch 1: PENDING_VERIFICATION (Crop Top, 50 units)
+  const order1 = await prisma.cuttingOrder.upsert({
+    where: { orderNo: "ORD-2026-001" },
+    update: {},
+    create: {
+      orderNo: "ORD-2026-001",
+      recipeId: cropTop.id,
+      targetQty: 50,
+      fabricRollId: "FAB-ROLL-101",
+      actualFabricYds: 56.5,
+      status: "PENDING_VERIFICATION",
+      createdBy: supervisor.id,
+      verificationItems: {
+        create: cropTop.components.map((c) => ({
+          componentId: c.id,
+          expectedQty: c.piecesPerGarment * 50,
+          status: "PENDING",
+        })),
+      },
+    },
+  });
+
+  // Batch 2: REJECTED (Casual Blouse with Rejection Feedback)
+  const order2 = await prisma.cuttingOrder.upsert({
+    where: { orderNo: "ORD-2026-002" },
+    update: {},
+    create: {
+      orderNo: "ORD-2026-002",
+      recipeId: blouse.id,
+      targetQty: 100,
+      fabricRollId: "FAB-ROLL-204",
+      actualFabricYds: 185.0,
+      status: "REJECTED",
+      createdBy: supervisor.id,
+      verificationItems: {
+        create: blouse.components.map((c) => {
+          const expected = c.piecesPerGarment * 100;
+          const isDefect = c.componentName === "Left Sleeve";
+          return {
+            componentId: c.id,
+            expectedQty: expected,
+            actualQty: isDefect ? expected - 8 : expected,
+            status: isDefect ? "RED" : "GREEN",
+          };
+        }),
+      },
+      verificationLogs: {
+        create: {
+          verifierId: verifier.id,
+          decision: "REJECTED",
+          rejectionNote: "QC DEFECT: 8 pieces shortage on Left Sleeve panel. Edge frayed during cutting. Rework required.",
+        },
+      },
+    },
+  });
+
+  // Batch 3: VERIFIED (Casual Blouse Ready for Sewing Queue)
+  const order3 = await prisma.cuttingOrder.upsert({
+    where: { orderNo: "ORD-2026-003" },
+    update: {},
+    create: {
+      orderNo: "ORD-2026-003",
+      recipeId: blouse.id,
+      targetQty: 75,
+      fabricRollId: "FAB-ROLL-309",
+      actualFabricYds: 137.0, // Expected: 1.8 * 75 = 135 -> +1.48% wastage (under 5% cap)
+      status: "VERIFIED",
+      createdBy: supervisor.id,
+      verificationItems: {
+        create: blouse.components.map((c) => ({
+          componentId: c.id,
+          expectedQty: c.piecesPerGarment * 75,
+          actualQty: c.piecesPerGarment * 75,
+          status: "GREEN",
+        })),
+      },
+      verificationLogs: {
+        create: {
+          verifierId: verifier.id,
+          decision: "APPROVED",
+          wastagePct: 1.48,
+        },
+      },
+    },
+  });
+
+  console.log("✅ Evaluator Demo Batches Seeded:", order1.orderNo, order2.orderNo, order3.orderNo);
+  console.log("🎉 Complete database seeding finished!");
 }
 
 main()
