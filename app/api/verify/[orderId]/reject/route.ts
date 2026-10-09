@@ -53,34 +53,42 @@ export async function POST(
     ? (counts as Record<string, unknown>)
     : {};
 
-  const itemUpdates = order.verificationItems.map((item) => {
-    const rawVal = countsMap[item.componentId];
-    if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
-      const { actualQty, status } = evaluateComponentCount(item.expectedQty, rawVal);
-      return prisma.verificationItem.update({
-        where: { id: item.id },
-        data: { actualQty, status },
-      });
-    }
-    return null;
-  }).filter(Boolean);
-
-  await prisma.$transaction([
-    prisma.cuttingOrder.updateMany({
+  const outcome = await prisma.$transaction(async (tx) => {
+    const upd = await tx.cuttingOrder.updateMany({
       where: { id: orderId, status: "PENDING_VERIFICATION" },
       data: { status: "REJECTED" },
-    }),
-    ...(itemUpdates as ReturnType<typeof prisma.verificationItem.update>[]),
-    prisma.verificationLog.create({
+    });
+    if (upd.count !== 1) return { conflict: true };
+   
+    for (const item of order.verificationItems) {
+      const rawVal = countsMap[item.componentId];
+      if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
+        const { actualQty, status } = evaluateComponentCount(item.expectedQty, rawVal);
+        await tx.verificationItem.update({
+          where: { id: item.id },
+          data: { actualQty, status },
+        });
+      }
+    }
+   
+    await tx.verificationLog.create({
       data: {
         orderId,
         verifierId: session.user.id,
         decision: "REJECTED",
-        rejectionNote: noteValidation.cleanNote,
+        rejectionNote: noteValidation.cleanNote!,
       },
-    }),
-  ]);
-
+    });
+    return { conflict: false };
+  });
+   
+  if (outcome.conflict) {
+    return NextResponse.json(
+      { error: "Order was concurrently updated or is no longer pending verification" },
+      { status: 409 }
+    );
+  }
+   
   return NextResponse.json({
     success: true,
     message: "Batch rejected and feedback returned to Cutting Supervisor",
