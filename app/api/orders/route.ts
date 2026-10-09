@@ -60,32 +60,38 @@ export async function POST(req: Request) {
 
   if (!recipe) return NextResponse.json({ error: "Production recipe not found" }, { status: 404 });
 
-  // Generate unique order number with collision protection
-  const timestampSuffix = Date.now().toString().slice(-4);
-  const orderCount = await prisma.cuttingOrder.count();
-  const orderNo = `ORD-${new Date().getFullYear()}-${String(orderCount + 1).padStart(3, "0")}-${timestampSuffix}`;
-
-  // Create order with verification items (multiplier engine) in atomic transaction
-  const order = await prisma.cuttingOrder.create({
-    data: {
-      orderNo,
-      recipeId,
-      targetQty,
-      fabricRollId,
-      actualFabricYds,
-      createdBy: session.user.id,
-      status: "PENDING_VERIFICATION",
-      verificationItems: {
-        create: recipe.components.map((comp) => ({
-          componentId: comp.id,
-          expectedQty: comp.piecesPerGarment * targetQty, // Multiplier engine
-          actualQty: null,
-          status: "PENDING",
-        })),
-      },
-    },
-    include: { recipe: true, verificationItems: true },
-  });
+  let order;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const orderCount = await prisma.cuttingOrder.count();
+    const orderNo = `ORD-${new Date().getFullYear()}-${String(orderCount + 1 + attempt).padStart(4, "0")}`;
+    try {
+      order = await prisma.cuttingOrder.create({
+        data: {
+          orderNo,
+          recipeId,
+          targetQty,
+          fabricRollId,
+          actualFabricYds,
+          createdBy: session.user.id,
+          status: "PENDING_VERIFICATION",
+          verificationItems: {
+            create: recipe.components.map((comp) => ({
+              componentId: comp.id,
+              expectedQty: comp.piecesPerGarment * targetQty, // Multiplier engine
+              actualQty: null,
+              status: "PENDING",
+            })),
+          },
+        },
+        include: { recipe: true, verificationItems: true },
+      });
+      break;
+    } catch (e: unknown) {
+      const isUniqueClash = (e as { code?: string })?.code === "P2002";
+      if (!isUniqueClash || attempt === 4) throw e;
+      // unique-constraint clash on orderNo: loop and try the next number
+    }
+  }
 
   return NextResponse.json(order, { status: 201 });
 }
