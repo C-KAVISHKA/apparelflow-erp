@@ -142,6 +142,19 @@ verifierId: session.user.id, // Never from req.json()
 
 ---
 
+### Flaw 5: Fake API Route Tests (Test Integrity Defect)
+
+**What AI generated:**
+The initial test suite (`tests/domain.test.ts`) claimed to test the API route integration for RBAC and the sewing queue. However, instead of making actual HTTP requests to the route handlers, it re-implemented the routing logic inline using fake arrays and string comparisons (e.g. `const isAuthorized = session.role === "cutting_verifier"`).
+
+**Why it was broken:**
+These "tests" provided a false sense of security. They proved the AI understood the rules in principle but completely failed to verify if the actual `app/api/...` route handlers enforced those rules. If a route handler was missing an RBAC check, the fake test would still pass.
+
+**My fix:**
+Deleted the fake integration tests and created `tests/api.test.ts`. This new suite calls the real Next.js route handlers directly, mocking only the NextAuth session and Prisma database, ensuring the actual server logic is executed and tested against role-based and state-based rules.
+
+---
+
 ## 3. Human Refactoring
 
 Beyond catching AI bugs, I made the following architectural improvements:
